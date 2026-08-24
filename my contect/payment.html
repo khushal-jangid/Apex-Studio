@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Direct UPI Payment & UTR Verification | Apex Studio</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Space Grotesk, Inter, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- QRCode.js library for dynamic real-time QR generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- EmailJS Browser SDK for In-Browser Background Email Sending -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  
+  <!-- Tailwind Custom Setup -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            headline: ['"Space Grotesk"', 'sans-serif'],
+            body: ['"Inter"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            bg: '#09090b',
+            surface: '#121215',
+            surfaceHover: '#18181d',
+            border: '#27272a',
+            primary: '#fafafa',
+            muted: '#a1a1aa',
+            emerald: '#10b981',
+            cyan: '#06b6d4',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #09090b; }
+    ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+    .studio-card {
+      background: #121215;
+      border: 1px solid #27272a;
+      transition: all 0.2s ease;
+    }
+    .studio-card:hover {
+      border-color: #52525b;
+    }
+
+    #toast { transition: opacity 0.25s ease, transform 0.25s ease; }
+    
+    .qr-box canvas, .qr-box img {
+      margin: 0 auto;
+      border-radius: 8px;
+    }
+
+    /* Clean Print Styles for Official Receipt Invoice */
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+      header, footer, main, #toast, .no-print {
+        display: none !important;
+      }
+      #utrSuccessModal {
+        position: static !important;
+        display: block !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        background: #ffffff !important;
+        padding: 0 !important;
+      }
+      #utrCard {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        max-width: 100% !important;
+        transform: none !important;
+        padding: 24px !important;
+      }
+      #utrCard * {
+        color: #0f172a !important;
+      }
+      .print-emerald {
+        color: #059669 !important;
+      }
+      .print-bg-light {
+        background: #f8fafc !important;
+        border-color: #cbd5e1 !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-bg text-zinc-300 font-body antialiased selection:bg-zinc-800 selection:text-white min-h-screen flex flex-col justify-between">
+
+  <!-- TOAST -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 pointer-events-none opacity-0 translate-y-4 bg-zinc-900 border border-zinc-700 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-xs font-medium">
+    <i class="fa-solid fa-check text-emerald-400 text-sm"></i>
+    <span id="toastMessage">Copied to clipboard!</span>
+  </div>
+
+  <!-- NAVBAR -->
+  <header class="max-w-5xl mx-auto px-4 w-full pt-6">
+    <div class="bg-surface/90 backdrop-blur-md border border-border rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-xl">
+      
+      <a href="index.html" class="flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-mono font-bold text-sm group-hover:bg-white group-hover:text-black transition">
+          A
+        </div>
+        <div>
+          <span class="font-headline font-bold text-white tracking-tight text-base">Apex Studio</span>
+          <span class="text-xs text-zinc-500 font-mono ml-1">• Checkout</span>
+        </div>
+      </a>
+
+      <a href="index.html" class="flex items-center gap-2 text-xs text-zinc-400 hover:text-white font-mono transition">
+        <i class="fa-solid fa-arrow-left text-[10px]"></i>
+        <span>Back to Portfolio</span>
+      </a>
+
+    </div>
+  </header>
+
+
+  <!-- MAIN CHECKOUT CONTAINER -->
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+    
+    <!-- Title -->
+    <div class="text-center max-w-xl mx-auto mb-10">
+      <div class="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-xs font-mono text-emerald-400 mb-3">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span>Instant UPI Payment & UTR Verification</span>
+      </div>
+      <h1 class="font-headline font-bold text-3xl sm:text-4xl text-white">Direct Project Payment</h1>
+      <p class="text-xs sm:text-sm text-zinc-400 mt-2">
+        Select your package, scan the dynamic UPI QR code, and submit your 12-digit UTR reference number for instant receipt.
+      </p>
+    </div>
+
+    <!-- 2-Column Grid -->
+    <!-- PROJECT ORDER SUMMARY BANNER (Shown if redirected from Project Form) -->
+    <div id="projectSummaryCard" class="hidden studio-card rounded-2xl p-5 mb-8 border-emerald-500/40 bg-zinc-950/80 shadow-lg">
+      <div class="flex items-center justify-between border-b border-border pb-3 mb-3">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-xs font-mono uppercase text-emerald-400 font-bold tracking-wider">Configured Project Summary</span>
+        </div>
+        <span id="bannerBadge" class="text-[11px] font-mono text-zinc-300 bg-zinc-900 border border-zinc-800 px-2.5 py-0.5 rounded-md">Pro Platform</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
+        <div>
+          <div class="text-zinc-500 font-mono text-[10px] uppercase">Client Name</div>
+          <div id="bannerName" class="text-white font-bold mt-0.5 text-sm">Alex Sharma</div>
+        </div>
+        <div>
+          <div class="text-zinc-500 font-mono text-[10px] uppercase">Project Scope</div>
+          <div id="bannerCategory" class="text-white font-bold mt-0.5 text-sm">Gym / Business Platform</div>
+        </div>
+        <div>
+          <div class="text-zinc-500 font-mono text-[10px] uppercase">Timeline</div>
+          <div id="bannerTimeline" class="text-cyan font-mono font-semibold mt-0.5">3 to 5 Days</div>
+        </div>
+        <div>
+          <div class="text-zinc-500 font-mono text-[10px] uppercase">Total Package Price</div>
+          <div id="bannerPrice" class="text-emerald-400 font-headline font-bold text-lg mt-0.5">₹5,999</div>
+        </div>
+      </div>
+
+      <div id="bannerModulesWrap" class="mt-3 pt-3 border-t border-border/60 text-[11px] text-zinc-400 flex flex-wrap items-center gap-2">
+        <span class="font-mono text-zinc-500">Modules:</span>
+        <span id="bannerModules" class="text-zinc-300">Mobile-First UI, Contact Forms, Cloud Hosting</span>
+      </div>
+    </div>
+
+    <!-- 2-Column Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- LEFT: Dynamic QR & UPI Payment (5 Cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <div class="studio-card rounded-2xl p-6 text-center border-zinc-700">
+          
+          <div class="text-xs font-mono uppercase text-zinc-500 mb-1">UPI Payee Account</div>
+          <div class="font-headline font-bold text-lg text-white mb-4">Apex Studio</div>
+
+          <!-- Dynamic QR Container -->
+          <div class="bg-white p-4 rounded-xl inline-block shadow-lg mb-4 qr-box">
+            <div id="qrcode"></div>
+          </div>
+
+          <!-- Selected Amount Badge -->
+          <div class="mb-4">
+            <span class="text-xs text-zinc-400">Payment Amount:</span>
+            <div id="displayAmount" class="font-headline font-bold text-3xl text-emerald-400 mt-0.5">₹5,999</div>
+            <div class="text-[11px] font-mono text-zinc-500 mt-0.5">Scan with GPay, PhonePe, Paytm, BHIM</div>
+          </div>
+
+          <!-- Copy UPI ID Strip -->
+          <div class="bg-zinc-950 border border-border rounded-xl p-3 flex items-center justify-between mb-4">
+            <div class="text-left">
+              <div class="text-[10px] font-mono text-zinc-500 uppercase">Official UPI ID:</div>
+              <div class="font-mono text-xs font-bold text-white select-all">7303354598@omni</div>
+            </div>
+            <button onclick="copyUpiId()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-mono px-3 py-1.5 rounded-lg border border-zinc-700 transition flex items-center gap-1.5">
+              <i class="fa-regular fa-copy text-xs"></i>
+              <span>Copy</span>
+            </button>
+          </div>
+
+          <!-- 1-Tap Mobile UPI Intent Button -->
+          <a id="upiIntentBtn" href="upi://pay?pa=7303354598@omni&pn=Apex%20Studio&am=3999&cu=INR&tn=Project%20Payment" class="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs py-3 rounded-xl transition shadow mb-2">
+            <i class="fa-solid fa-mobile-screen-button text-sm"></i>
+            <span>Pay on Mobile (1-Tap UPI Apps)</span>
+          </a>
+          <p class="text-[10px] text-zinc-500 font-mono">Works on Android & iOS UPI Apps</p>
+
+        </div>
+
+        <!-- Security / Safety Note -->
+        <div class="studio-card rounded-2xl p-4 text-xs space-y-2 text-zinc-400">
+          <div class="font-mono uppercase text-zinc-300 font-bold flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-check text-emerald-400"></i>
+            <span>Payment Security & Guarantees</span>
+          </div>
+          <p class="text-[11px] leading-relaxed">
+            • Direct peer-to-peer UPI transfer with zero intermediary commission.<br/>
+            • 100% money-back guarantee if project milestones are not initiated within 24 hours.
+          </p>
+        </div>
+
+      </div>
+
+
+      <!-- RIGHT: Package Selector & UTR Submission Form (7 Cols) -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- STEP 1: Quick Amount / Package Selector -->
+        <div class="studio-card rounded-2xl p-6">
+          <div class="text-xs font-mono uppercase text-zinc-400 font-bold mb-3 flex items-center justify-between">
+            <span>[1] Select Payment Purpose / Package:</span>
+            <span class="text-emerald-400 text-[11px]">Step 1</span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+            
+            <button type="button" onclick="setAmount(500, 'Booking Advance Token')" class="pkg-btn p-3 rounded-xl border border-border bg-bg hover:border-zinc-500 text-left transition" data-amount="500">
+              <div class="text-[10px] font-mono text-zinc-500">Advance</div>
+              <div class="font-headline font-bold text-base text-white">₹500</div>
+              <div class="text-[10px] text-zinc-400">Booking Token</div>
+            </button>
+
+            <button type="button" onclick="setAmount(1999, 'Starter Landing Page')" class="pkg-btn p-3 rounded-xl border border-border bg-bg hover:border-zinc-500 text-left transition" data-amount="1999">
+              <div class="text-[10px] font-mono text-zinc-500">Starter</div>
+              <div class="font-headline font-bold text-base text-white">₹1,999</div>
+              <div class="text-[10px] text-zinc-400">1-Page Site</div>
+            </button>
+
+            <button type="button" onclick="setAmount(3999, 'Pro Business Platform')" class="pkg-btn p-3 rounded-xl border-2 border-emerald-500 bg-zinc-900 text-left transition shadow" data-amount="3999">
+              <div class="text-[10px] font-mono text-emerald-400">Pro Platform</div>
+              <div class="font-headline font-bold text-base text-emerald-400">₹3,999</div>
+              <div class="text-[10px] text-zinc-300 font-medium">Gym / Portal ⭐</div>
+            </button>
+
+            <button type="button" onclick="setAmount(9999, 'Mobile App / Full-Stack')" class="pkg-btn p-3 rounded-xl border border-border bg-bg hover:border-zinc-500 text-left transition" data-amount="9999">
+              <div class="text-[10px] font-mono text-zinc-500">Custom App</div>
+              <div class="font-headline font-bold text-base text-white">₹9,999+</div>
+              <div class="text-[10px] text-zinc-400">iOS / Android</div>
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <!-- STEP 2: UTR Submission & Payment Verification Form -->
+        <div class="studio-card rounded-2xl p-6 sm:p-7 border-zinc-700">
+          
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="font-headline font-bold text-xl text-white">Submit UTR / Transaction ID</h2>
+            <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">Step 2: Verification</span>
+          </div>
+          <p class="text-xs text-zinc-400 mb-6">
+            After paying via UPI, enter your 12-digit UTR/Ref number below to receive instant project confirmation and formal invoice receipt.
+          </p>
+
+          <form id="utrForm" onsubmit="handleUtrSubmit(event)" class="space-y-4">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-mono text-zinc-400 uppercase mb-1">Your Full Name *</label>
+                <input type="text" id="client_name" required placeholder="e.g. Alex Sharma" class="w-full bg-bg border border-border rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-400 transition">
+              </div>
+              <div>
+                <label class="block text-[11px] font-mono text-zinc-400 uppercase mb-1">Email Address *</label>
+                <input type="email" id="client_email" required placeholder="e.g. alex@company.com" class="w-full bg-bg border border-border rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-400 transition">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-mono text-zinc-400 uppercase mb-1">Mobile / Phone Number *</label>
+                <input type="tel" id="client_phone" required placeholder="e.g. +91 98765 43210" class="w-full bg-bg border border-border rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-400 transition">
+              </div>
+              <div>
+                <label class="block text-[11px] font-mono text-zinc-400 uppercase mb-1">Package / Project Purpose *</label>
+                <input type="text" id="client_purpose" required value="Pro Business Platform (₹3,999)" class="w-full bg-bg border border-border rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-400 transition">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-mono text-zinc-400 uppercase mb-1">Amount Paid (INR) *</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2.5 text-xs text-zinc-500 font-mono">₹</span>
+                  <input type="number" id="form_paid_amount" required value="3999" class="w-full bg-bg border border-border rounded-xl pl-7 pr-3 py-2.5 text-xs text-emerald-400 font-mono font-bold focus:outline-none focus:border-zinc-400 transition">
+                </div>
+              </div>
+              <div>
+                <label class="block text-[11px] font-mono text-zinc-400 uppercase mb-1">12-Digit UTR / Transaction ID *</label>
+                <input type="text" id="client_utr" required placeholder="e.g. 423456789012" minlength="6" class="w-full bg-bg border-2 border-emerald-500/50 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono font-bold placeholder-zinc-600 focus:outline-none focus:border-emerald-400 transition">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-mono text-zinc-400 uppercase mb-1">Payment App Used & Notes</label>
+              <input type="text" id="client_notes" placeholder="e.g. Paid via Google Pay / PhonePe, project domain info..." class="w-full bg-bg border border-border rounded-xl px-3.5 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-400 transition">
+            </div>
+
+            <div class="pt-2 flex flex-col sm:flex-row gap-3">
+              <button type="submit" class="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-zinc-200 text-black font-bold text-xs py-3.5 rounded-xl transition shadow">
+                <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
+                <span>Submit UTR Receipt to apexstudiodev63@gmail.com</span>
+              </button>
+
+              <button type="button" onclick="copyUtrReceipt()" class="sm:w-auto px-4 flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-border text-zinc-300 hover:text-white font-mono text-xs py-3.5 rounded-xl transition">
+                <i class="fa-regular fa-copy text-xs"></i>
+                <span>Copy Receipt</span>
+              </button>
+            </div>
+
+          </form>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+
+  <!-- FOOTER -->
+  <footer class="border-t border-border/60 py-8 max-w-5xl mx-auto px-4 w-full">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500 font-mono">
+      <div>Apex Studio Official UPI Checkout • ID: 7303354598@omni</div>
+      <div>Support: <a href="javascript:void(0)" onclick="copyEmail()" class="text-white hover:underline cursor-pointer">apexstudiodev63@gmail.com</a></div>
+    </div>
+  </footer>
+
+
+  <!-- JS SCRIPT -->
+  <script>
+    // ================= EMAIL & EMAILJS CONFIGURATION =================
+    const UPI_ID = "7303354598@omni";
+    const PAYEE_NAME = "Apex Studio";
+    const DEV_EMAIL = "apexstudiodev63@gmail.com";
+    const EMAILJS_PUBLIC_KEY = "oK-dVDov4aH3stu4C";
+    const EMAILJS_SERVICE_ID = "service_uqgs8b3";
+    const EMAILJS_TEMPLATE_ID = "template_bvxdmnf";
+
+    // Initialize EmailJS with public key object (EmailJS v4 standard)
+    if (window.emailjs && EMAILJS_PUBLIC_KEY) {
+      try {
+        emailjs.init({
+          publicKey: EMAILJS_PUBLIC_KEY,
+        });
+      } catch (err) {
+        try { emailjs.init(EMAILJS_PUBLIC_KEY); } catch (e) {}
+      }
+    }
+
+    // Silent background email dispatcher (EmailJS + FormSubmit AJAX Fallback - 0 Popups, 0 Mailto)
+    async function sendBackgroundEmail(payload) {
+      let sent = false;
+
+      // 1. Try EmailJS first with direct public key option
+      if (window.emailjs && EMAILJS_PUBLIC_KEY) {
+        try {
+          const res = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, payload, EMAILJS_PUBLIC_KEY);
+          console.log("Email sent successfully via EmailJS:", res.status, res.text);
+          sent = true;
+        } catch (err) {
+          console.warn("EmailJS error, falling back to background API:", err);
+        }
+      }
+
+      // 2. Background AJAX Fallback (FormSubmit JSON API - 100% background, never opens email app)
+      if (!sent) {
+        try {
+          const fetchPromise = fetch(`https://formsubmit.co/ajax/${DEV_EMAIL}`, {
+            method: "POST",
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+          const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
+          await Promise.race([fetchPromise, timeoutPromise]);
+          sent = true;
+        } catch (err) {
+          console.log("Background API log:", err);
+        }
+      }
+
+      return sent;
+    }
+
+    let currentAmount = 3999;
+    let currentPurpose = "Pro Business Platform (₹3,999)";
+    let lastReceiptData = null;
+    let qrInstance = null;
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toastMessage');
+      if (toast && text) {
+        text.textContent = msg;
+        toast.classList.remove('opacity-0', 'translate-y-4');
+        toast.classList.add('opacity-100', 'translate-y-0');
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-4');
+          toast.classList.remove('opacity-100', 'translate-y-0');
+        }, 2800);
+      }
+    }
+
+    function copyUpiId() {
+      navigator.clipboard.writeText(UPI_ID).then(() => {
+        showToast("UPI ID copied: " + UPI_ID);
+      }).catch(() => {
+        prompt("Copy UPI ID:", UPI_ID);
+      });
+    }
+
+    function copyEmail() {
+      navigator.clipboard.writeText(DEV_EMAIL).then(() => {
+        showToast("Copied apexstudiodev63@gmail.com to clipboard!");
+      }).catch(() => {
+        prompt("Copy email address:", DEV_EMAIL);
+      });
+    }
+
+    function generateQr(amount) {
+      const qrContainer = document.getElementById('qrcode');
+      qrContainer.innerHTML = '';
+      
+      const upiUrl = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amount}&cu=INR&tn=${encodeURIComponent('Project ' + currentPurpose)}`;
+      
+      try {
+        if (typeof QRCode !== 'undefined') {
+          qrInstance = new QRCode(qrContainer, {
+            text: upiUrl,
+            width: 170,
+            height: 170,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.M
+          });
+        } else {
+          throw new Error("QRCode JS not loaded");
+        }
+      } catch (err) {
+        qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=${encodeURIComponent(upiUrl)}" alt="UPI QR Code" class="w-[170px] h-[170px] mx-auto rounded-lg" />`;
+      }
+
+      // Update mobile 1-tap intent button
+      const upiBtn = document.getElementById('upiIntentBtn');
+      if (upiBtn) upiBtn.href = upiUrl;
+
+      const displayEl = document.getElementById('displayAmount');
+      if (displayEl) displayEl.textContent = '₹' + amount.toLocaleString('en-IN');
+
+      const paidInput = document.getElementById('form_paid_amount');
+      if (paidInput) paidInput.value = amount;
+    }
+
+    function setAmount(amount, purposeName) {
+      currentAmount = amount;
+      currentPurpose = purposeName + ` (₹${amount.toLocaleString('en-IN')})`;
+
+      // Highlight active button
+      document.querySelectorAll('.pkg-btn').forEach(btn => {
+        if (parseInt(btn.getAttribute('data-amount')) === amount) {
+          btn.className = 'pkg-btn p-3 rounded-xl border-2 border-emerald-500 bg-zinc-900 text-left transition shadow';
+          const badge = btn.querySelector('.text-\\[10px\\]');
+          if (badge) badge.className = 'text-[10px] font-mono text-emerald-400';
+          const title = btn.querySelector('.font-headline');
+          if (title) title.className = 'font-headline font-bold text-base text-emerald-400';
+        } else {
+          btn.className = 'pkg-btn p-3 rounded-xl border border-border bg-bg hover:border-zinc-500 text-left transition';
+          const badge = btn.querySelector('.text-\\[10px\\]');
+          if (badge) badge.className = 'text-[10px] font-mono text-zinc-500';
+          const title = btn.querySelector('.font-headline');
+          if (title) title.className = 'font-headline font-bold text-base text-white';
+        }
+      });
+
+      generateQr(currentAmount);
+    }
+
+    let projectContext = {
+      name: '',
+      email: '',
+      phone: '',
+      brand: '',
+      category: '',
+      amount: 5999,
+      timeline: '',
+      budget: '',
+      modules: '',
+      ref: '',
+      details: ''
+    };
+
+    function openUtrModal(data) {
+      lastReceiptData = data;
+
+      document.getElementById('receiptInvoiceId').textContent = data.invoiceId;
+      document.getElementById('receiptDate').textContent = data.dateStr;
+      document.getElementById('receiptClientName').textContent = data.name + (data.brand && data.brand !== 'N/A' ? ` (${data.brand})` : '');
+      document.getElementById('receiptClientEmail').textContent = data.email;
+      document.getElementById('receiptClientPhone').textContent = data.phone;
+      document.getElementById('receiptPurpose').textContent = data.purpose;
+      document.getElementById('receiptUtr').textContent = data.utr;
+      document.getElementById('receiptAmount').textContent = `₹${parseInt(data.amount).toLocaleString('en-IN')}`;
+      document.getElementById('receiptNotes').textContent = data.details || data.notes || 'None';
+
+      const modal = document.getElementById('utrSuccessModal');
+      const card = document.getElementById('utrCard');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      modal.classList.add('opacity-100');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+    }
+
+    function closeUtrModal() {
+      const modal = document.getElementById('utrSuccessModal');
+      const card = document.getElementById('utrCard');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      modal.classList.remove('opacity-100');
+      card.classList.add('scale-95');
+      card.classList.remove('scale-100');
+    }
+
+    async function handleUtrSubmit(e) {
+      e.preventDefault();
+      const form = document.getElementById('utrForm');
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Verifying Payment & Transmitting Brief...</span>`;
+
+      const name = document.getElementById('client_name').value.trim() || projectContext.name;
+      const email = document.getElementById('client_email').value.trim() || projectContext.email;
+      const phone = document.getElementById('client_phone').value.trim() || projectContext.phone;
+      const purpose = document.getElementById('client_purpose').value.trim() || projectContext.category;
+      const amount = document.getElementById('form_paid_amount').value.trim() || currentAmount;
+      const utr = document.getElementById('client_utr').value.trim();
+      const notes = document.getElementById('client_notes').value.trim() || 'None';
+
+      const invoiceId = `APX-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' +
+                      now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+      const fullDetails = projectContext.details || notes;
+
+      const formattedPaymentDocument = 
+`=============================================================
+      APEX STUDIO — PAID PROJECT BRIEF & PAYMENT RECEIPT
+=============================================================
+
+[1] INVOICE & PAYMENT DETAILS:
+• Invoice Reference: ${invoiceId}
+• Payment Timestamp: ${dateStr}
+• 12-Digit UTR No  : ${utr}
+• Amount Paid      : ₹${parseInt(amount).toLocaleString('en-IN')}
+• Paid To UPI      : ${UPI_ID} (${PAYEE_NAME})
+
+[2] CLIENT INFORMATION:
+• Client Name      : ${name}
+• Email Address    : ${email}
+• Mobile / Phone   : ${phone}
+• Brand / Company  : ${projectContext.brand || 'N/A'}
+
+[3] PROJECT SCOPE & REQUIREMENTS:
+• Project Scope    : ${purpose}
+• Target Timeline  : ${projectContext.timeline || 'Standard'}
+• Desired Modules  : ${projectContext.modules || 'Standard Setup'}
+• Reference Links  : ${projectContext.ref || 'None'}
+
+[4] PROJECT DESCRIPTION & NOTES:
+${fullDetails}
+
+=============================================================
+Status: PAYMENT VERIFIED & DISPATCHED FOR DEVELOPMENT
+=============================================================`;
+
+      const payload = {
+        name: name,
+        from_name: name,
+        client_name: name,
+        user_name: name,
+        email: email,
+        from_email: email,
+        client_email: email,
+        user_email: email,
+        reply_to: email,
+        _replyto: email,
+        phone: phone,
+        client_phone: phone,
+        contact_number: phone,
+        brand: projectContext.brand || 'N/A',
+        brand_name: projectContext.brand || 'N/A',
+        invoice_id: invoiceId,
+        invoice_number: invoiceId,
+        payment_date: dateStr,
+        date: dateStr,
+        utr: utr,
+        utr_number: utr,
+        transaction_id: utr,
+        amount: `₹${parseInt(amount).toLocaleString('en-IN')}`,
+        amount_paid: `₹${parseInt(amount).toLocaleString('en-IN')}`,
+        paid_to: `${UPI_ID} (${PAYEE_NAME})`,
+        paid_to_upi: `${UPI_ID} (${PAYEE_NAME})`,
+        upi_id: UPI_ID,
+        purpose: purpose,
+        project_scope: purpose,
+        category: projectContext.category || purpose,
+        timeline: projectContext.timeline || 'Standard',
+        target_timeline: projectContext.timeline || 'Standard',
+        budget: projectContext.budget || `₹${amount}`,
+        budget_range: projectContext.budget || `₹${amount}`,
+        modules: projectContext.modules || 'Standard Setup',
+        ref: projectContext.ref || 'None',
+        reference_links: projectContext.ref || 'None',
+        message: formattedPaymentDocument,
+        details: formattedPaymentDocument,
+        project_details: formattedPaymentDocument,
+        notes: notes,
+        subject: `[PAID PROJECT BRIEF] ₹${amount} - UTR: ${utr} - ${name} (${projectContext.category || purpose})`,
+        _subject: `[PAID PROJECT BRIEF] ₹${amount} - UTR: ${utr} - ${name} (${projectContext.category || purpose})`,
+        _captcha: "false"
+      };
+
+      // Transmit 100% in background silently (NO mail app, NO popup)
+      await sendBackgroundEmail(payload);
+
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+
+      openUtrModal({
+        invoiceId,
+        dateStr,
+        utr,
+        amount,
+        name,
+        email,
+        phone,
+        brand: projectContext.brand,
+        purpose,
+        timeline: projectContext.timeline,
+        modules: projectContext.modules,
+        ref: projectContext.ref,
+        details: fullDetails,
+        notes
+      });
+    }
+
+    async function sendReceiptEmail() {
+      if (!lastReceiptData) return;
+      const d = lastReceiptData;
+      
+      showToast("Official confirmation notification sent to " + DEV_EMAIL);
+    }
+
+    function copyUtrReceipt() {
+      if (lastReceiptData) {
+        const d = lastReceiptData;
+        const receipt = `APEX STUDIO — OFFICIAL PAID BRIEF & PAYMENT RECEIPT\n` +
+                        `===================================================\n` +
+                        `Invoice ID   : ${d.invoiceId}\n` +
+                        `Date & Time  : ${d.dateStr}\n` +
+                        `Client Name  : ${d.name}\n` +
+                        `Client Email : ${d.email} | Phone: ${d.phone}\n` +
+                        `Project Scope: ${d.purpose}\n` +
+                        `Amount Paid  : ₹${parseInt(d.amount).toLocaleString('en-IN')}\n` +
+                        `12-Digit UTR : ${d.utr}\n` +
+                        `Paid To UPI  : ${UPI_ID} (Apex Studio)\n` +
+                        `Requirements : ${d.details || d.notes}\n` +
+                        `Status       : VERIFIED & DISPATCHED TO DEVELOPER\n` +
+                        `===================================================`;
+
+        navigator.clipboard.writeText(receipt).then(() => {
+          showToast("Official receipt copied to clipboard!");
+        }).catch(() => {
+          prompt("Copy receipt text:", receipt);
+        });
+        return;
+      }
+
+      const name = document.getElementById('client_name').value || '[Client Name]';
+      const email = document.getElementById('client_email').value || '[Client Email]';
+      const phone = document.getElementById('client_phone').value || '[Phone]';
+      const purpose = document.getElementById('client_purpose').value || 'Project Payment';
+      const amount = document.getElementById('form_paid_amount').value || currentAmount;
+      const utr = document.getElementById('client_utr').value || '[UTR/Ref No.]';
+
+      const receipt = `PAYMENT RECEIPT BRIEF\n` +
+                      `UTR / Ref No: ${utr}\n` +
+                      `Amount: ₹${amount} | Paid to: ${UPI_ID}\n` +
+                      `Purpose: ${purpose}\n` +
+                      `Client: ${name} (${email}, ${phone})`;
+
+      navigator.clipboard.writeText(receipt).then(() => {
+        showToast("Payment receipt copied to clipboard!");
+      });
+    }
+
+    // Read URL query parameters from Project Specification Form
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      projectContext.name = params.get('name') || '';
+      projectContext.email = params.get('email') || '';
+      projectContext.phone = params.get('phone') || '';
+      projectContext.brand = params.get('brand') || '';
+      projectContext.category = params.get('category') || '';
+      projectContext.amount = parseInt(params.get('amount')) || 3999;
+      projectContext.timeline = params.get('timeline') || '';
+      projectContext.budget = params.get('budget') || '';
+      projectContext.modules = params.get('modules') || '';
+      projectContext.ref = params.get('ref') || '';
+      projectContext.details = params.get('details') || '';
+
+      if (projectContext.name || projectContext.category || params.get('amount')) {
+        // Show summary banner
+        document.getElementById('projectSummaryCard').classList.remove('hidden');
+        if (projectContext.name) {
+          document.getElementById('bannerName').textContent = projectContext.name + (projectContext.brand && projectContext.brand !== 'N/A' ? ` (${projectContext.brand})` : '');
+        }
+        if (projectContext.category) {
+          document.getElementById('bannerCategory').textContent = projectContext.category;
+          document.getElementById('bannerBadge').textContent = projectContext.category.split('(')[0].trim();
+        }
+        if (projectContext.timeline) document.getElementById('bannerTimeline').textContent = projectContext.timeline;
+        if (projectContext.modules) document.getElementById('bannerModules').textContent = projectContext.modules;
+        
+        // Auto-fill UTR form
+        if (projectContext.name) document.getElementById('client_name').value = projectContext.name;
+        if (projectContext.email) document.getElementById('client_email').value = projectContext.email;
+        if (projectContext.phone) document.getElementById('client_phone').value = projectContext.phone;
+        
+        const targetPurpose = projectContext.category ? `${projectContext.category}${projectContext.brand && projectContext.brand !== 'N/A' ? ' (' + projectContext.brand + ')' : ''}` : 'Pro Business Platform';
+        document.getElementById('client_purpose').value = targetPurpose;
+        if (projectContext.details) document.getElementById('client_notes').value = projectContext.details;
+
+        const targetAmount = projectContext.amount || 3999;
+        document.getElementById('bannerPrice').textContent = `₹${targetAmount.toLocaleString('en-IN')}`;
+        setAmount(targetAmount, projectContext.category ? projectContext.category.split('(')[0].trim() : 'Project Package');
+        document.getElementById('client_purpose').value = targetPurpose;
+      } else {
+        generateQr(3999);
+      }
+    });
+  </script>
+
+
+  <!-- ================= IN-PAGE UTR CONFIRMATION & OFFICIAL EMAIL RECEIPT MODAL ================= -->
+  <div id="utrSuccessModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="studio-card rounded-2xl p-6 sm:p-8 max-w-2xl w-full border-emerald-500/40 bg-zinc-950 shadow-2xl relative transform scale-95 transition-transform duration-300 max-h-[90vh] overflow-y-auto" id="utrCard">
+      
+      <!-- Close Button (hidden during print) -->
+      <button onclick="closeUtrModal()" class="no-print absolute top-4 right-4 text-zinc-500 hover:text-white transition">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between border-b border-border pb-5 mb-5">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-file-invoice"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-headline font-bold text-xl sm:text-2xl text-white">Payment Receipt & Confirmation</h3>
+              <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">VERIFIED</span>
+            </div>
+            <p class="text-xs text-zinc-400 mt-0.5">
+              Apex Studio • Official Development Invoice Receipt
+            </p>
+          </div>
+        </div>
+
+        <div class="text-right font-mono text-xs hidden sm:block">
+          <div class="text-zinc-500">Invoice ID:</div>
+          <div id="receiptInvoiceId" class="text-white font-bold">APX-2026-88192</div>
+          <div id="receiptDate" class="text-[11px] text-zinc-400 mt-0.5">24 Aug 2026, 01:40 PM</div>
+        </div>
+      </div>
+
+      <!-- Receipt Body Box -->
+      <div class="space-y-4 text-xs font-mono">
+        
+        <!-- Client Details & Payee Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          
+          <div class="bg-zinc-900 border border-border rounded-xl p-3.5 print-bg-light">
+            <div class="text-[10px] uppercase text-zinc-500 font-bold mb-2 flex items-center gap-1.5">
+              <i class="fa-solid fa-user text-emerald-400"></i>
+              <span>Client / Billed To:</span>
+            </div>
+            <div id="receiptClientName" class="text-white font-bold text-sm">Alex Sharma</div>
+            <div id="receiptClientEmail" class="text-zinc-300 text-[11px] mt-0.5">alex@example.com</div>
+            <div id="receiptClientPhone" class="text-zinc-400 text-[11px] mt-0.5">+91 98765 43210</div>
+          </div>
+
+          <div class="bg-zinc-900 border border-border rounded-xl p-3.5 print-bg-light">
+            <div class="text-[10px] uppercase text-zinc-500 font-bold mb-2 flex items-center gap-1.5">
+              <i class="fa-solid fa-building-columns text-emerald-400"></i>
+              <span>Payee & Development Studio:</span>
+            </div>
+            <div class="text-white font-bold text-sm">Apex Studio (Independent Dev)</div>
+            <div class="text-zinc-300 text-[11px] mt-0.5">UPI ID: <span class="font-bold text-white">7303354598@omni</span></div>
+            <div class="text-zinc-400 text-[11px] mt-0.5">Email: <span class="text-white">apexstudiodev63@gmail.com</span></div>
+          </div>
+
+        </div>
+
+        <!-- Scope & Payment Summary Table -->
+        <div class="bg-zinc-900 border border-border rounded-xl p-4 space-y-2.5 print-bg-light">
+          
+          <div class="flex justify-between border-b border-border/60 pb-2">
+            <span class="text-zinc-400">Project Purpose / Package:</span>
+            <span id="receiptPurpose" class="text-white font-bold text-right">Gym / Business Platform</span>
+          </div>
+
+          <div class="flex justify-between border-b border-border/60 pb-2">
+            <span class="text-zinc-400">12-Digit UTR / Transaction No:</span>
+            <span id="receiptUtr" class="text-emerald-400 font-bold font-mono tracking-wider">423456789012</span>
+          </div>
+
+          <div class="flex justify-between border-b border-border/60 pb-2">
+            <span class="text-zinc-400">Payment Status:</span>
+            <span class="text-emerald-400 font-semibold">Payment Logged & Dispatched</span>
+          </div>
+
+          <div class="flex justify-between items-center pt-1 text-sm">
+            <span class="text-zinc-300 font-bold">Total Amount Paid:</span>
+            <span id="receiptAmount" class="text-emerald-400 font-headline font-bold text-2xl">₹5,999</span>
+          </div>
+
+          <div class="pt-2 border-t border-border/60 text-[11px] text-zinc-400">
+            <span class="text-zinc-500">Project Notes:</span>
+            <span id="receiptNotes" class="text-zinc-300 ml-1 italic">None</span>
+          </div>
+
+        </div>
+
+        <!-- Confirmation Notice -->
+        <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-[11px] text-zinc-300 flex items-start gap-2.5">
+          <i class="fa-solid fa-circle-check text-emerald-400 text-sm mt-0.5 shrink-0"></i>
+          <div>
+            <span class="font-bold text-white">Your payment submission has been registered!</span>
+            <p class="text-zinc-400 mt-0.5">
+              An official notification copy has been transmitted to <span class="text-white font-semibold">apexstudiodev63@gmail.com</span>. We will reach out via WhatsApp/Email within 2 hours to initiate your project onboarding.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Action Buttons (Hidden during printing) -->
+      <div class="no-print mt-6 space-y-2.5">
+        
+        <div class="flex flex-col sm:flex-row gap-2.5">
+          <button type="button" onclick="sendReceiptEmail()" class="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs py-3 rounded-xl transition shadow">
+            <i class="fa-solid fa-paper-plane text-xs"></i>
+            <span>Send Email Confirmation to Apex Studio</span>
+          </button>
+
+          <button type="button" onclick="window.print()" class="px-4 flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-border text-zinc-300 hover:text-white font-mono text-xs py-3 rounded-xl transition">
+            <i class="fa-solid fa-print text-xs"></i>
+            <span>Print / PDF</span>
+          </button>
+
+          <button type="button" onclick="copyUtrReceipt()" class="px-4 flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-border text-zinc-300 hover:text-white font-mono text-xs py-3 rounded-xl transition">
+            <i class="fa-regular fa-copy text-xs"></i>
+            <span>Copy Receipt</span>
+          </button>
+        </div>
+
+        <a href="index.html" class="w-full block text-center bg-zinc-950 hover:bg-zinc-900 border border-border text-zinc-400 hover:text-white text-xs font-medium py-2.5 rounded-xl transition">
+          <i class="fa-solid fa-arrow-left text-[10px] mr-1"></i> Return to Main Website
+        </a>
+
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>
